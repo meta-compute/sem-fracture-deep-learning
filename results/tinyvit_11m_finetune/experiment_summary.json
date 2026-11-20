@@ -1,0 +1,332 @@
+{
+    "experiment": "TinyViT-11M SEM Fracture Classification",
+    "created_at_utc": "2026-11-20T20:54:55.303811+00:00",
+    "architecture": {
+        "name": "tiny_vit_11m_224.in1k",
+        "type": "Hybrid CNN-Vision Transformer",
+        "pretraining": "ImageNet-1K",
+        "total_parameters": 10549319,
+        "head_only_trainable_parameters": 1347,
+        "finetuning_trainable_parameters": 5163231,
+        "finetuned_stage": 4,
+        "input_size": [
+            224,
+            224
+        ]
+    },
+    "dataset": {
+        "split_file": "dataset_split.csv",
+        "train": 1402,
+        "validation": 280,
+        "test_reserved": 279,
+        "classes": [
+            "Brittle",
+            "Ductile",
+            "Mixed"
+        ],
+        "train_class_counts": {
+            "Brittle": 589,
+            "Ductile": 711,
+            "Mixed": 102
+        },
+        "batch_size": 16,
+        "resize_interpolation": "bilinear",
+        "normalization": "ImageNet mean/std",
+        "augmentation": [
+            "RandomHorizontalFlip",
+            "RandomVerticalFlip"
+        ],
+        "grouping": "Filename-derived groups",
+        "train_groups": 147,
+        "validation_groups": 28,
+        "test_groups": 31
+    },
+    "head_only": {
+        "best_epoch": 9,
+        "checkpoint": "/Users/pooja/Documents/Academic Projects/Deep Learning Projects/Warmup Project/SEM Image Database/results/tinyvit_11m/checkpoints/tinyvit_11m_best.pth",
+        "accuracy": 0.975,
+        "macro_f1": 0.9396253344020672,
+        "classification_report": {
+            "Brittle": {
+                "precision": 1.0,
+                "recall": 0.9914529914529915,
+                "f1-score": 0.9957081545064378,
+                "support": 117.0
+            },
+            "Ductile": {
+                "precision": 0.9857142857142858,
+                "recall": 0.971830985915493,
+                "f1-score": 0.9787234042553191,
+                "support": 142.0
+            },
+            "Mixed": {
+                "precision": 0.7916666666666666,
+                "recall": 0.9047619047619048,
+                "f1-score": 0.8444444444444444,
+                "support": 21.0
+            },
+            "accuracy": 0.975,
+            "macro avg": {
+                "precision": 0.9257936507936507,
+                "recall": 0.9560152940434631,
+                "f1-score": 0.9396253344020672,
+                "support": 280.0
+            },
+            "weighted avg": {
+                "precision": 0.9771301020408164,
+                "recall": 0.975,
+                "f1-score": 0.975749681481578,
+                "support": 280.0
+            }
+        },
+        "confusion_matrix": [
+            [
+                116,
+                0,
+                1
+            ],
+            [
+                0,
+                138,
+                4
+            ],
+            [
+                0,
+                2,
+                19
+            ]
+        ]
+    },
+    "finetuning_configuration": {
+        "initial_checkpoint": "/Users/pooja/Documents/Academic Projects/Deep Learning Projects/Warmup Project/SEM Image Database/results/tinyvit_11m/checkpoints/tinyvit_11m_best.pth",
+        "trainable_components": [
+            "stages.3",
+            "head.fc"
+        ],
+        "stage_learning_rate": 1e-05,
+        "head_learning_rate": 0.0001,
+        "weight_decay": 0.0001,
+        "optimizer": "AdamW",
+        "loss": "Class-weighted CrossEntropyLoss",
+        "class_weights": [
+            0.7934352159500122,
+            0.6572902202606201,
+            4.581699371337891
+        ],
+        "gradient_clip_max_norm": 1.0,
+        "maximum_epochs": 10,
+        "early_stopping_patience": 4,
+        "epochs_completed": 10,
+        "best_epoch": 9,
+        "best_checkpoint": "/Users/pooja/Documents/Academic Projects/Deep Learning Projects/Warmup Project/SEM Image Database/results/tinyvit_11m_finetune/checkpoints/tinyvit_11m_finetuned_best.pth",
+        "random_seed": 42
+    },
+    "fine_tuned": {
+        "accuracy": 0.9892857142857143,
+        "macro_f1": 0.9721009841677364,
+        "classification_report": {
+            "Brittle": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1-score": 1.0,
+                "support": 117.0
+            },
+            "Ductile": {
+                "precision": 0.986013986013986,
+                "recall": 0.9929577464788732,
+                "f1-score": 0.9894736842105263,
+                "support": 142.0
+            },
+            "Mixed": {
+                "precision": 0.95,
+                "recall": 0.9047619047619048,
+                "f1-score": 0.926829268292683,
+                "support": 21.0
+            },
+            "accuracy": 0.9892857142857143,
+            "macro avg": {
+                "precision": 0.9786713286713287,
+                "recall": 0.9659065504135927,
+                "f1-score": 0.9721009841677364,
+                "support": 280.0
+            },
+            "weighted avg": {
+                "precision": 0.9891570929070929,
+                "recall": 0.9892857142857143,
+                "f1-score": 0.9891738492572896,
+                "support": 280.0
+            }
+        },
+        "confusion_matrix": [
+            [
+                117,
+                0,
+                0
+            ],
+            [
+                0,
+                141,
+                1
+            ],
+            [
+                0,
+                2,
+                19
+            ]
+        ]
+    },
+    "comparison": {
+        "macro_f1_improvement": 0.03247564976566919,
+        "accuracy_improvement": 0.014285714285714346,
+        "corrected_errors": 4,
+        "new_errors": 0,
+        "other_changes": 0,
+        "prediction_changes": [
+            {
+                "filename": "100Cr6_AR_06_10.png",
+                "actual": "Brittle",
+                "before": "Mixed",
+                "after": "Brittle",
+                "status": "corrected"
+            },
+            {
+                "filename": "316L_AR_04_7.png",
+                "actual": "Ductile",
+                "before": "Mixed",
+                "after": "Ductile",
+                "status": "corrected"
+            },
+            {
+                "filename": "316L_AR_21_20.png",
+                "actual": "Ductile",
+                "before": "Mixed",
+                "after": "Ductile",
+                "status": "corrected"
+            },
+            {
+                "filename": "316L_AR_23_13.png",
+                "actual": "Ductile",
+                "before": "Mixed",
+                "after": "Ductile",
+                "status": "corrected"
+            }
+        ],
+        "remaining_errors": [
+            {
+                "filename": "304_H2_04_25.png",
+                "actual": "Ductile",
+                "predicted": "Mixed"
+            },
+            {
+                "filename": "316L_AR_04_15.png",
+                "actual": "Mixed",
+                "predicted": "Ductile"
+            },
+            {
+                "filename": "mX65_H2_26_29.png",
+                "actual": "Mixed",
+                "predicted": "Ductile"
+            }
+        ]
+    },
+    "finetuning_history": {
+        "train_loss": [
+            0.19942188864849014,
+            0.16157012682890695,
+            0.1304207240939127,
+            0.09274465610008632,
+            0.1274807878495752,
+            0.20220789934936384,
+            0.08894366678182626,
+            0.08074269930091516,
+            0.07415418518570416,
+            0.10200096237430717
+        ],
+        "val_loss": [
+            0.05014508311474596,
+            0.04166112210327161,
+            0.04956152185415184,
+            0.04401541984001856,
+            0.041177848443320335,
+            0.03484145049893154,
+            0.0386248766357312,
+            0.026679897338893203,
+            0.025292453355513497,
+            0.04568299088209764
+        ],
+        "val_accuracy": [
+            0.9857142857142858,
+            0.9857142857142858,
+            0.9714285714285714,
+            0.9785714285714285,
+            0.9857142857142858,
+            0.9892857142857143,
+            0.9892857142857143,
+            0.9857142857142858,
+            0.9892857142857143,
+            0.9892857142857143
+        ],
+        "val_macro_f1": [
+            0.9620046620046621,
+            0.9695171362710355,
+            0.9322946929999024,
+            0.9493788819875776,
+            0.9630494027045752,
+            0.9718481386020379,
+            0.9708746538014831,
+            0.9617394550205299,
+            0.9721009841677364,
+            0.9708746538014831
+        ],
+        "val_mixed_f1": [
+            0.9,
+            0.926829268292683,
+            0.8260869565217391,
+            0.8695652173913043,
+            0.9047619047619048,
+            0.926829268292683,
+            0.9230769230769231,
+            0.9,
+            0.926829268292683,
+            0.9230769230769231
+        ],
+        "val_mixed_recall": [
+            0.8571428571428571,
+            0.9047619047619048,
+            0.9047619047619048,
+            0.9523809523809523,
+            0.9047619047619048,
+            0.9047619047619048,
+            0.8571428571428571,
+            0.8571428571428571,
+            0.9047619047619048,
+            0.8571428571428571
+        ],
+        "epoch_time": [
+            10.771701541962102,
+            10.415009584045038,
+            10.339206542121246,
+            10.310988708864897,
+            10.330539042130113,
+            10.315434332937002,
+            10.336338582914323,
+            10.340111791854724,
+            10.320327416062355,
+            10.346477875020355
+        ]
+    },
+    "reference_models": {
+        "resnet18_head_only_macro_f1": 0.9434,
+        "resnet18_finetuned_macro_f1": 0.9525,
+        "deit_tiny_finetuned_macro_f1": 0.8954
+    },
+    "limitations": [
+        "Validation results only; test set not evaluated.",
+        "Physical specimen independence is unverified.",
+        "Mixed validation class contains only 21 images.",
+        "Single-seed experiment.",
+        "Multiple checkpoints selected using the same validation set.",
+        "Pretraining and optimization recipes differ across architectures."
+    ],
+    "test_evaluated": false
+}
