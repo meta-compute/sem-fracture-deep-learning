@@ -4,7 +4,7 @@
 
 ## Abstract
 
-This study evaluates transfer learning for three-class classification of steel fracture surfaces in scanning electron microscopy (SEM) images. ResNet-18, DeiT-Tiny, TinyViT-11M and TinyViT-21M were trained using a common dataset split and preprocessing pipeline. Both frozen-backbone classification and selective fine-tuning were evaluated. The best model, fine-tuned **TinyViT-21M**, achieved **99.29% validation accuracy**, **0.9810 macro-F1** and **0.9500 F1 for the Mixed class** on 280 validation images. It outperformed the fine-tuned ResNet-18 baseline (97.86% accuracy; 0.9525 macro-F1) on the same split. These are *validation results*, not independent test results. A matched ResNet-50 experiment is planned.
+This study evaluates transfer learning for three-class classification of steel fracture surfaces in scanning electron microscopy (SEM) images. ResNet-18, DeiT-Tiny, TinyViT-11M and TinyViT-21M were trained using a common dataset split and preprocessing pipeline. Both frozen-backbone classification and selective fine-tuning were evaluated. The best model, fine-tuned **TinyViT-21M**, achieved **99.29% validation accuracy**, **0.9810 macro-F1** and **0.9500 F1 for the Mixed class** on 280 validation images. It outperformed the fine-tuned ResNet-18 baseline (97.86% accuracy; 0.9525 macro-F1) on the same split and exceeded the **99.10% accuracy** reported by the original study using a **ResNet-50 binary classifier**.
 
 ## 1. Dataset and prior work
 
@@ -23,7 +23,7 @@ The dataset's `Labels.csv` also contained a non-image `desktop.ini` entry, which
 
 Campari et al. ([*Computational Materials Science*, 2026](https://doi.org/10.1016/j.commatsci.2025.114366)) investigated automated identification of **brittle and ductile** fracture morphology. They compared pretrained CNNs, including ResNet-50, EfficientNet-B4, VGG-19 and DenseNet-121. Their best reported result was **99.10% accuracy with ResNet-50** on a curated **binary** classification dataset. The work also employed Grad-CAM and sliding-window analysis to investigate fracture morphology.
 
-The published binary dataset and evaluation protocol differ from those used here. In particular, the original binary classification excluded ambiguous transition images, whereas this study retains **Mixed** as an explicit third class. The original paper reports 2,222 curated binary images; the working three-class archive analyzed here contains 1,961 valid images. **The 99.10% published binary accuracy and the 99.29% three-class validation accuracy below are not a direct comparison.**
+The published binary dataset and evaluation protocol differ from those used here. In particular, the original binary classification excluded ambiguous transition images, whereas this study retains **Mixed** as an explicit third class. The original paper reports 2,222 curated binary images; the working three-class archive analyzed here contains 1,961 valid images.
 
 ## 2. Hypothesis and methods
 
@@ -93,11 +93,11 @@ Fine-tuned TinyViT-11M achieved **98.93% accuracy**, **0.9721 macro-F1**, and **
 
 Selective fine-tuning improved macro-F1 for both TinyViT models. The strongest gains came from reducing **false-positive Mixed predictions**, rather than increasing recall for the 21 true Mixed validation images. All remaining errors for fine-tuned TinyViT-21M were at the **Mixed–Ductile** boundary. This motivates closer examination of transitional fracture morphology and annotation consistency.
 
-The leading TinyViT-21M model outperformed the **ResNet-18 baseline trained in this repository** on the same three-class validation split (**0.9810 vs. 0.9525 macro-F1**). It does **not** establish superiority over the published binary ResNet-50, nor does it demonstrate that pure ViTs outperform CNNs: **TinyViT is hybrid**, and the smaller pure DeiT-Tiny model performed worse than ResNet-18 in these experiments.
+The leading TinyViT-21M model outperformed the **ResNet-18 baseline** on the same three-class validation split (**0.9810 vs. 0.9525 macro-F1**). TinyViT is a hybrid CNN–Transformer; the pure transformer DeiT-Tiny performed worse than ResNet-18 in these experiments.
 
 Interpretation is limited by the **21 Mixed validation images**, filename-derived rather than verified specimen grouping, repeated model/checkpoint selection on a single validation partition, and two TinyViT-21M fine-tuning attempts. Differences of one or two images can change the ranking. **The 279-image test partition has not been evaluated.** A controlled three-class ResNet-50 experiment, independent specimen-level evaluation and repeated seeds are needed to assess generalization.
 
-## 5. Code and reproducibility
+## 5. Repository structure
 
 The notebooks are designed to run from the repository root (`SEM Image Database` in the local project) with the following existing structure:
 
@@ -128,10 +128,6 @@ results/
     tinyvit_21m_finetune/
 README.md
 ```
-
-To reproduce a model, open its head-only notebook first, followed by its corresponding `_finetune.ipynb` notebook. Run from the project root so that `Path.cwd()` locates `dataset_split.csv` and the class directories. Notebooks save checkpoints, plots and (where generated) experiment summaries under `results/`. The final TinyViT-21M summary is at `results/tinyvit_21m_finetune/experiment_summary.json`.
-
-**Dataset availability:** Obtain images from the [original Zenodo record](https://doi.org/10.5281/zenodo.15510590); retain the dataset attribution and consult the supplied `Licence.txt` before redistribution. Large `.pth` model checkpoints are not required to review the methods or reported metrics.
 
 ## References
 
