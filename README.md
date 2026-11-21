@@ -80,6 +80,7 @@ Compared with the head-only model, fine-tuning corrected three Ductile images pr
 *Figure 1. Confusion matrices and validation macro-F1 from the TinyViT-21M notebook. The curve corresponds to the restarted fine-tuning run.*
 
 Fine-tuning was initialized from the best head-only checkpoint. Two training runs were conducted using random seeds 42 and 43. The best model was obtained with seed 43 at epoch 3, achieving a validation macro-F1 of **0.9810**.
+Fine-tuning was initialized from the best head-only checkpoint. Two training runs were conducted using random seeds 42 and 43. The best model was obtained with seed 43 at epoch 3, achieving a validation macro-F1 of **0.9810**.
 
 ### 3.2 Held-out Test Results
 
@@ -103,6 +104,15 @@ Fine-tuned TinyViT-11M achieved **98.93% accuracy**, **0.9721 macro-F1**, and **
 
 *Figure 2. TinyViT-11M confusion matrices, per-class F1 and fine-tuning performance from the corresponding notebook.*
 
+## 4. Discussion
+
+Fine-tuning improved classification performance across both TinyViT architectures. TinyViT-21M achieved the highest validation accuracy of **99.29%**, compared with 97.86% for ResNet-18 and 98.93% for TinyViT-11M.
+
+On the independent test set, TinyViT-21M achieved **96.06% accuracy and 0.8921 macro-F1**. Classification remained accurate for Brittle and Ductile fractures, with F1 scores of 0.9829 and 0.9754, respectively. However, performance on Mixed fractures decreased substantially, with an F1 score of 0.7179.
+
+Of the 11 test errors, six involved Mixed fractures classified as Brittle or Ductile. Errors were concentrated in 100Cr6 and 316L samples, indicating differences in classification performance across materials.
+
+These results demonstrate the effectiveness of transfer learning for SEM fracture classification while highlighting the difficulty of recognizing mixed fracture morphologies across different samples.
 ## 4. Discussion
 
 Fine-tuning improved classification performance across both TinyViT architectures. TinyViT-21M achieved the highest validation accuracy of **99.29%**, compared with 97.86% for ResNet-18 and 98.93% for TinyViT-11M.
