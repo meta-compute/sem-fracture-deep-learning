@@ -1,0 +1,57 @@
+{
+    "model": "tiny_vit_21m_224.in1k",
+    "checkpoint": "/Users/pooja/Documents/Academic Projects/Deep Learning Projects/Warmup Project/SEM Image Database/results/tinyvit_21m_finetune/checkpoints/tinyvit_21m_finetuned_best.pth",
+    "test_images": 279,
+    "accuracy": 0.9605734767025089,
+    "macro_f1": 0.8920977657819763,
+    "confusion_matrix": [
+        [
+            115,
+            0,
+            1
+        ],
+        [
+            0,
+            139,
+            4
+        ],
+        [
+            3,
+            3,
+            14
+        ]
+    ],
+    "classification_report": {
+        "Brittle": {
+            "precision": 0.9745762711864406,
+            "recall": 0.9913793103448276,
+            "f1-score": 0.9829059829059829,
+            "support": 116.0
+        },
+        "Ductile": {
+            "precision": 0.9788732394366197,
+            "recall": 0.972027972027972,
+            "f1-score": 0.9754385964912281,
+            "support": 143.0
+        },
+        "Mixed": {
+            "precision": 0.7368421052631579,
+            "recall": 0.7,
+            "f1-score": 0.717948717948718,
+            "support": 20.0
+        },
+        "accuracy": 0.9605734767025089,
+        "macro avg": {
+            "precision": 0.8967638719620727,
+            "recall": 0.8878024274575997,
+            "f1-score": 0.8920977657819763,
+            "support": 279.0
+        },
+        "weighted avg": {
+            "precision": 0.9597367842377309,
+            "recall": 0.9605734767025089,
+            "f1-score": 0.9600852604814121,
+            "support": 279.0
+        }
+    }
+}

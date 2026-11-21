@@ -81,7 +81,21 @@ Compared with the head-only model, fine-tuning corrected three Ductile images pr
 
 The first fine-tuning attempt stopped after four epochs without exceeding the head-only baseline (**0.9554 macro-F1**). In the second attempt, the model and optimizer were reinitialized from that head-only checkpoint, the seed was changed to **43**, and early-stopping patience was counted **only after the first improvement**. The best score was **0.9810** at epoch 3; four subsequent non-improving epochs triggered stopping at epoch 7. Both attempts used the same validation set.
 
-### 3.2 Comparison with TinyViT-11M
+### 3.2 Held-out Test Results
+
+The fine-tuned TinyViT-21M achieved **96.06% accuracy (268/279)** and **0.8921 macro-F1** on the held-out test set, compared with 99.29% accuracy and 0.9810 macro-F1 on validation.
+
+| Class | Precision | Recall | F1 |
+|---|---:|---:|---:|
+| Brittle | 0.9746 | 0.9914 | 0.9829 |
+| Ductile | 0.9789 | 0.9720 | 0.9754 |
+| Mixed | 0.7368 | 0.7000 | 0.7179 |
+
+Of the 11 misclassified images, six were Mixed fractures classified as Brittle or Ductile, while five Brittle/Ductile images were classified as Mixed. Errors were concentrated in 100Cr6 and 316L samples, particularly under AR conditions.
+
+The results indicate strong classification performance for Brittle and Ductile fractures, while **generalization to Mixed fracture morphology remains the primary limitation**.
+
+### 3.3 Comparison with TinyViT-11M
 
 Fine-tuned TinyViT-11M achieved **98.93% accuracy**, **0.9721 macro-F1**, and **0.9268 Mixed F1**, using **10.55M parameters**. Fine-tuned TinyViT-21M achieved one additional correct validation prediction while nearly doubling parameter count. The difference is therefore small relative to the dataset size.
 
