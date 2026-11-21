@@ -113,17 +113,62 @@ Of the 11 test errors, six involved Mixed fractures classified as Brittle or Duc
 
 These results demonstrate the effectiveness of transfer learning for SEM fracture classification while highlighting the difficulty of recognizing mixed fracture morphologies across different samples.
 
-## 5. Repository structure
+## 5. Optional Mixed-class augmentation
+
+Run `python augmentation.py --data-dir .` to augment the Mixed training images
+until their count matches the largest training class. With the current split,
+this adds **609** generated images to the 102 Mixed training images. The
+augmentation uses right-angle rotations, flips and small brightness/contrast
+changes.
+
+The original images and `dataset_split.csv` are left untouched. Generated
+images are saved under `Mixed/augmented/`, and
+`dataset_split_augmented.csv` contains the original split plus the generated
+training rows. Only the Mixed training rows are augmented; validation and test
+rows are unchanged. The training notebooks use the shared
+`prepare_training_split` helper to create or validate this augmented manifest
+before loading their datasets.
+
+Use `--target-count N` to choose another training count and `--seed N` to
+control the random variants. The command refuses to overwrite an existing
+augmentation output or manifest.
+
+## 6. Shared training and prediction
+
+Install the Python dependencies with `pip install -r requirements.txt`. Choose
+a PyTorch and torchvision build that matches your platform; the supplied
+requirements intentionally do not pin platform-specific PyTorch wheels.
+
+Use [train_model.ipynb](./train_model.ipynb) for the shared training workflow
+and [predict_model.ipynb](./predict_model.ipynb) for inference and evaluation.
+The training notebook supports ResNet-18, DeiT-Tiny, TinyViT-11M, and
+TinyViT-21M, with head-only training or selective fine-tuning. It writes
+checkpoints under `results/shared_pipeline/` and refuses to overwrite an
+existing checkpoint. The model-specific notebooks remain available for the
+original experiments; their saved outputs predate augmentation and should be
+refreshed by rerunning the notebook before interpreting results.
+
+## 7. Repository structure
 
 The notebooks are designed to run from the repository root (`SEM Image Database` in the local project) with the following existing structure:
 
 ```text
+augmentation.py
+requirements.txt
+sem_fracture/
+    data.py
+    models.py
+    training.py
+    prediction.py
+    pipeline.py
 Brittle/                       # SEM image class folders
 Ductile/
 Mixed/
 Labels.csv
 Licence.txt
 dataset_split.csv
+train_model.ipynb
+predict_model.ipynb
 train_resnet18.ipynb
 train_resnet18_finetune.ipynb
 deit_tiny.ipynb
@@ -132,6 +177,7 @@ tinyvit_11m.ipynb
 tinyvit_11m_finetune.ipynb
 tinyvit_21m.ipynb
 tinyvit_21m_finetune.ipynb
+tests/
 results/
     resnet18_best.pth
     resnet18_validation_analysis.png

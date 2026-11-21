@@ -1,0 +1,11 @@
+# Install compatible PyTorch and torchvision builds for your platform.
+torch
+torchvision
+timm
+
+numpy
+pandas
+matplotlib
+Pillow
+scikit-learn
+ipykernel
