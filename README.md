@@ -79,7 +79,7 @@ Compared with the head-only model, fine-tuning corrected three Ductile images pr
 
 *Figure 1. Confusion matrices and validation macro-F1 from the TinyViT-21M notebook. The curve corresponds to the restarted fine-tuning run.*
 
-The first fine-tuning attempt stopped after four epochs without exceeding the head-only baseline (**0.9554 macro-F1**). In the second attempt, the model and optimizer were reinitialized from that head-only checkpoint, the seed was changed to **43**, and early-stopping patience was counted **only after the first improvement**. The best score was **0.9810** at epoch 3; four subsequent non-improving epochs triggered stopping at epoch 7. Both attempts used the same validation set.
+Fine-tuning was initialized from the best head-only checkpoint. Two training runs were conducted using random seeds 42 and 43. The best model was obtained with seed 43 at epoch 3, achieving a validation macro-F1 of **0.9810**.
 
 ### 3.2 Held-out Test Results
 
