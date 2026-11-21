@@ -103,13 +103,15 @@ Fine-tuned TinyViT-11M achieved **98.93% accuracy**, **0.9721 macro-F1**, and **
 
 *Figure 2. TinyViT-11M confusion matrices, per-class F1 and fine-tuning performance from the corresponding notebook.*
 
-## 4. Discussion and limitations
+## 4. Discussion
 
-Selective fine-tuning improved macro-F1 for both TinyViT models. The strongest gains came from reducing **false-positive Mixed predictions**, rather than increasing recall for the 21 true Mixed validation images. All remaining errors for fine-tuned TinyViT-21M were at the **Mixed–Ductile** boundary. This motivates closer examination of transitional fracture morphology and annotation consistency.
+Fine-tuning improved classification performance across both TinyViT architectures. TinyViT-21M achieved the highest validation accuracy of **99.29%**, compared with 97.86% for ResNet-18 and 98.93% for TinyViT-11M.
 
-The leading TinyViT-21M model outperformed the **ResNet-18 baseline** on the same three-class validation split (**0.9810 vs. 0.9525 macro-F1**). TinyViT is a hybrid CNN–Transformer; the pure transformer DeiT-Tiny performed worse than ResNet-18 in these experiments.
+On the independent test set, TinyViT-21M achieved **96.06% accuracy and 0.8921 macro-F1**. Classification remained accurate for Brittle and Ductile fractures, with F1 scores of 0.9829 and 0.9754, respectively. However, performance on Mixed fractures decreased substantially, with an F1 score of 0.7179.
 
-Interpretation is limited by the **21 Mixed validation images**, filename-derived rather than verified specimen grouping, repeated model/checkpoint selection on a single validation partition, and two TinyViT-21M fine-tuning attempts. Differences of one or two images can change the ranking. **The 279-image test partition has not been evaluated.** A controlled three-class ResNet-50 experiment, independent specimen-level evaluation and repeated seeds are needed to assess generalization.
+Of the 11 test errors, six involved Mixed fractures classified as Brittle or Ductile. Errors were concentrated in 100Cr6 and 316L samples, indicating differences in classification performance across materials.
+
+These results demonstrate the effectiveness of transfer learning for SEM fracture classification while highlighting the difficulty of recognizing mixed fracture morphologies across different samples.
 
 ## 5. Repository structure
 
