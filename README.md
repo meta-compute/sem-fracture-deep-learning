@@ -139,14 +139,17 @@ Install the Python dependencies with `pip install -r requirements.txt`. Choose
 a PyTorch and torchvision build that matches your platform; the supplied
 requirements intentionally do not pin platform-specific PyTorch wheels.
 
-Use [train_model.ipynb](./train_model.ipynb) for the shared training workflow
-and [predict_model.ipynb](./predict_model.ipynb) for inference and evaluation.
-The training notebook supports ResNet-18, DeiT-Tiny, TinyViT-11M, and
-TinyViT-21M, with head-only training or selective fine-tuning. It writes
-checkpoints under `results/shared_pipeline/` and refuses to overwrite an
-existing checkpoint. The model-specific notebooks remain available for the
-original experiments; their saved outputs predate augmentation and should be
-refreshed by rerunning the notebook before interpreting results.
+Use [modelling.ipynb](./modelling.ipynb) for the combined Train, Validate, and
+Test workflow. It supports ResNet-18, DeiT-Tiny, TinyViT-11M, and TinyViT-21M,
+with head-only training or selective fine-tuning. Training writes checkpoints
+under `results/shared_pipeline/` and refuses to overwrite an existing
+checkpoint. The model-specific notebooks remain available for the original
+experiments; their saved outputs predate augmentation and should be refreshed
+by rerunning the notebook before interpreting results.
+
+Validation runs against the original `dataset_split.csv`. Final test evaluation
+is opt-in and also reads that original split; generated Mixed images are used
+for training only and must not be added to validation or test.
 
 ## 7. Repository structure
 
@@ -167,8 +170,7 @@ Mixed/
 Labels.csv
 Licence.txt
 dataset_split.csv
-train_model.ipynb
-predict_model.ipynb
+modelling.ipynb
 train_resnet18.ipynb
 train_resnet18_finetune.ipynb
 deit_tiny.ipynb
