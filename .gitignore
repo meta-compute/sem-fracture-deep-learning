@@ -1,0 +1,35 @@
+# SEM image datasets
+/Ductile/
+/Brittle/
+/Mixed/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Generated model weights and training checkpoints
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.safetensors
+
+# Python caches and local virtual environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Local environment settings
+.env
+.env.*
+!.env.example
+
+# Operating system files
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
