@@ -78,6 +78,7 @@ def train_model(
     checkpoint_path,
     patience=None,
     grad_clip_norm=None,
+    scheduler=None,
 ):
     if model_key not in MODEL_NAMES:
         raise ValueError(f"Unknown model key: {model_key}")
@@ -129,6 +130,8 @@ def train_model(
             raise ValueError("Training loader is empty")
         train_loss = loss_total / sample_count
         val_loss, val_metrics = _evaluate(model, val_loader, criterion, device)
+        if scheduler is not None:
+            scheduler.step()
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)
         history["val_accuracy"].append(val_metrics["accuracy"])

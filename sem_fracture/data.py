@@ -147,6 +147,11 @@ def build_transforms():
             resize,
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomVerticalFlip(p=0.5),
+            transforms.RandomAffine(
+                degrees=10,
+                scale=(0.95, 1.05),
+                interpolation=transforms.InterpolationMode.BILINEAR,
+            ),
             transforms.ToTensor(),
             transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
         ]

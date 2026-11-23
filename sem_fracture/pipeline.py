@@ -59,7 +59,7 @@ def run_experiment(
     device,
     head_lr=1e-3,
     backbone_lr=None,
-    weight_decay=1e-4,
+    weight_decay=1e-2,
     epochs=10,
     patience=None,
     grad_clip_norm=None,
@@ -68,6 +68,8 @@ def run_experiment(
     target_count=None,
     seed=42,
     batch_size=16,
+    lr_scheduler="cosine",
+    min_lr=1e-7,
 ):
     data_dir = Path(data_dir).resolve()
     checkpoint_path = _resolve_path(data_dir, checkpoint_path)
@@ -124,6 +126,13 @@ def run_experiment(
     training_records = [row for row in records if row["split"] == "train"]
     class_weights = compute_class_weights(records)
     criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
+
+    scheduler = None
+    if lr_scheduler == "cosine":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=epochs, eta_min=min_lr
+        )
+
     result = train_model(
         model=model,
         train_loader=loaders["train"],
@@ -136,6 +145,7 @@ def run_experiment(
         checkpoint_path=checkpoint_path,
         patience=patience,
         grad_clip_norm=grad_clip_norm,
+        scheduler=scheduler,
     )
     result.update(
         {
