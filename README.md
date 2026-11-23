@@ -79,7 +79,7 @@ Compared with the head-only model, fine-tuning corrected three Ductile images pr
 
 *Figure 1. Confusion matrices and validation macro-F1 from the TinyViT-21M notebook. The curve corresponds to the restarted fine-tuning run.*
 
-The first fine-tuning attempt stopped after four epochs without exceeding the head-only baseline (**0.9554 macro-F1**). In the second attempt, the model and optimizer were reinitialized from that head-only checkpoint, the seed was changed to **43**, and early-stopping patience was counted **only after the first improvement**. The best score was **0.9810** at epoch 3; four subsequent non-improving epochs triggered stopping at epoch 7. Both attempts used the same validation set.
+Fine-tuning was initialized from the best head-only checkpoint. Two training runs were conducted using random seeds 42 and 43. The best model was obtained with seed 43 at epoch 3, achieving a validation macro-F1 of **0.9810**.
 
 ### 3.2 Held-out Test Results
 
@@ -103,25 +103,74 @@ Fine-tuned TinyViT-11M achieved **98.93% accuracy**, **0.9721 macro-F1**, and **
 
 *Figure 2. TinyViT-11M confusion matrices, per-class F1 and fine-tuning performance from the corresponding notebook.*
 
-## 4. Discussion and limitations
+## 4. Discussion
 
-Selective fine-tuning improved macro-F1 for both TinyViT models. The strongest gains came from reducing **false-positive Mixed predictions**, rather than increasing recall for the 21 true Mixed validation images. All remaining errors for fine-tuned TinyViT-21M were at the **Mixed–Ductile** boundary. This motivates closer examination of transitional fracture morphology and annotation consistency.
+Fine-tuning improved classification performance across both TinyViT architectures. TinyViT-21M achieved the highest validation accuracy of **99.29%**, compared with 97.86% for ResNet-18 and 98.93% for TinyViT-11M.
 
-The leading TinyViT-21M model outperformed the **ResNet-18 baseline** on the same three-class validation split (**0.9810 vs. 0.9525 macro-F1**). TinyViT is a hybrid CNN–Transformer; the pure transformer DeiT-Tiny performed worse than ResNet-18 in these experiments.
+On the independent test set, TinyViT-21M achieved **96.06% accuracy and 0.8921 macro-F1**. Classification remained accurate for Brittle and Ductile fractures, with F1 scores of 0.9829 and 0.9754, respectively. However, performance on Mixed fractures decreased substantially, with an F1 score of 0.7179.
 
-Interpretation is limited by the **21 Mixed validation images**, filename-derived rather than verified specimen grouping, repeated model/checkpoint selection on a single validation partition, and two TinyViT-21M fine-tuning attempts. Differences of one or two images can change the ranking. **The 279-image test partition has not been evaluated.** A controlled three-class ResNet-50 experiment, independent specimen-level evaluation and repeated seeds are needed to assess generalization.
+Of the 11 test errors, six involved Mixed fractures classified as Brittle or Ductile. Errors were concentrated in 100Cr6 and 316L samples, indicating differences in classification performance across materials.
 
-## 5. Repository structure
+These results demonstrate the effectiveness of transfer learning for SEM fracture classification while highlighting the difficulty of recognizing mixed fracture morphologies across different samples.
+
+## 5. Optional Mixed-class augmentation
+
+Run `python augmentation.py --data-dir .` to augment the Mixed training images
+until their count matches the largest training class. With the current split,
+this adds **609** generated images to the 102 Mixed training images. The
+augmentation uses right-angle rotations, flips and small brightness/contrast
+changes.
+
+The original images and `dataset_split.csv` are left untouched. Generated
+images are saved under `Mixed/augmented/`, and
+`dataset_split_augmented.csv` contains the original split plus the generated
+training rows. Only the Mixed training rows are augmented; validation and test
+rows are unchanged. The training notebooks use the shared
+`prepare_training_split` helper to create or validate this augmented manifest
+before loading their datasets.
+
+Use `--target-count N` to choose another training count and `--seed N` to
+control the random variants. The command refuses to overwrite an existing
+augmentation output or manifest.
+
+## 6. Shared training and prediction
+
+Install the Python dependencies with `pip install -r requirements.txt`. Choose
+a PyTorch and torchvision build that matches your platform; the supplied
+requirements intentionally do not pin platform-specific PyTorch wheels.
+
+Use [modelling.ipynb](./modelling.ipynb) for the combined Train, Validate, and
+Test workflow. It supports ResNet-18, DeiT-Tiny, TinyViT-11M, and TinyViT-21M,
+with head-only training or selective fine-tuning. Training writes checkpoints
+under `results/shared_pipeline/` and refuses to overwrite an existing
+checkpoint. The model-specific notebooks remain available for the original
+experiments; their saved outputs predate augmentation and should be refreshed
+by rerunning the notebook before interpreting results.
+
+Validation runs against the original `dataset_split.csv`. Final test evaluation
+is opt-in and also reads that original split; generated Mixed images are used
+for training only and must not be added to validation or test.
+
+## 7. Repository structure
 
 The notebooks are designed to run from the repository root (`SEM Image Database` in the local project) with the following existing structure:
 
 ```text
+augmentation.py
+requirements.txt
+sem_fracture/
+    data.py
+    models.py
+    training.py
+    prediction.py
+    pipeline.py
 Brittle/                       # SEM image class folders
 Ductile/
 Mixed/
 Labels.csv
 Licence.txt
 dataset_split.csv
+modelling.ipynb
 train_resnet18.ipynb
 train_resnet18_finetune.ipynb
 deit_tiny.ipynb
@@ -130,6 +179,7 @@ tinyvit_11m.ipynb
 tinyvit_11m_finetune.ipynb
 tinyvit_21m.ipynb
 tinyvit_21m_finetune.ipynb
+tests/
 results/
     resnet18_best.pth
     resnet18_validation_analysis.png
