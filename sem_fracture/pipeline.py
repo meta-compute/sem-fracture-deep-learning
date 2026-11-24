@@ -1,3 +1,4 @@
+from collections import Counter
 import csv
 import json
 from pathlib import Path
@@ -14,6 +15,7 @@ from sem_fracture.data import (
     load_split,
     prepare_training_split,
 )
+from sem_fracture.losses import ClassBalancedCrossEntropyLoss
 from sem_fracture.models import (
     MODEL_NAMES,
     configure_trainable_parameters,
@@ -104,6 +106,8 @@ def run_experiment(
     batch_size=16,
     lr_scheduler="cosine",
     min_lr=1e-7,
+    loss_type="cross_entropy",
+    cb_beta=0.999,
 ):
     data_dir = Path(data_dir).resolve()
     checkpoint_path = _resolve_path(data_dir, checkpoint_path)
@@ -159,7 +163,18 @@ def run_experiment(
 
     training_records = [row for row in records if row["split"] == "train"]
     class_weights = compute_class_weights(records)
-    criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
+    if loss_type == "cross_entropy":
+        criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
+    elif loss_type == "class_balanced":
+        training_counts = Counter(row["label"] for row in training_records)
+        class_counts = [training_counts[label] for label in CLASSES]
+        criterion = ClassBalancedCrossEntropyLoss(
+            class_counts=class_counts,
+            beta=cb_beta,
+        ).to(device)
+        class_weights = criterion.weight.detach().cpu()
+    else:
+        raise ValueError(f"Unknown loss_type: {loss_type}")
 
     scheduler = None
     if lr_scheduler == "cosine":
