@@ -1,3 +1,5 @@
+import csv
+import json
 from pathlib import Path
 
 import torch
@@ -28,6 +30,38 @@ from sem_fracture.training import train_model
 def _resolve_path(data_dir, path):
     path = Path(path)
     return path if path.is_absolute() else Path(data_dir) / path
+
+
+def _save_training_artifacts(checkpoint_path, history, best_checkpoint, class_weights):
+    artifact_dir = Path(checkpoint_path).parent
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Training history CSV
+    history_csv = artifact_dir / "training_history.csv"
+    epochs = len(history.get("train_loss", []))
+    with history_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["epoch", "train_loss", "val_loss", "val_accuracy", "val_macro_f1"])
+        for ep in range(epochs):
+            writer.writerow([
+                ep + 1,
+                history["train_loss"][ep],
+                history["val_loss"][ep],
+                history["val_accuracy"][ep],
+                history["val_macro_f1"][ep],
+            ])
+
+    # 2. Experiment summary JSON
+    summary_json = artifact_dir / "experiment_summary.json"
+    summary_data = {
+        "best_epoch": best_checkpoint.get("epoch") if best_checkpoint else None,
+        "val_macro_f1": best_checkpoint.get("val_macro_f1") if best_checkpoint else None,
+        "val_accuracy": best_checkpoint.get("val_accuracy") if best_checkpoint else None,
+        "class_weights": class_weights,
+        "history": history,
+    }
+    with summary_json.open("w", encoding="utf-8") as f:
+        json.dump(summary_data, f, indent=4)
 
 
 def _split_datasets(records, data_dir):
@@ -147,6 +181,12 @@ def run_experiment(
         grad_clip_norm=grad_clip_norm,
         scheduler=scheduler,
     )
+    _save_training_artifacts(
+        checkpoint_path=checkpoint_path,
+        history=result.get("history", {}),
+        best_checkpoint=result.get("best_checkpoint", {}),
+        class_weights=class_weights.tolist(),
+    )
     result.update(
         {
             "class_weights": class_weights.tolist(),
@@ -206,16 +246,61 @@ def run_prediction(
         )
 
     y_true, y_pred = predict(model, loader, device)
+    metrics = evaluate_predictions(y_true, y_pred)
     predictions = [
         {
             "filename": row["filename"],
             "actual": row["label"],
             "predicted": CLASSES[predicted],
+            "correct": row["label"] == CLASSES[predicted],
         }
         for row, predicted in zip(records, y_pred)
     ]
+
+    artifact_dir = checkpoint_path.parent
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Prediction audit CSV for this split
+    predictions_csv = artifact_dir / f"{split}_predictions.csv"
+    with predictions_csv.open("w", newline="", encoding="utf-8") as f:
+        fieldnames = ["filename", "group", "actual", "predicted", "correct"]
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        for row, pred in zip(records, predictions):
+            writer.writerow({
+                "filename": row.get("filename", ""),
+                "group": row.get("group", ""),
+                "actual": pred["actual"],
+                "predicted": pred["predicted"],
+                "correct": pred["correct"],
+            })
+
+    # 2. Split metrics CSV
+    metrics_csv = artifact_dir / f"{split}_metrics.csv"
+    with metrics_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["metric", "class", "value"])
+        writer.writerow(["accuracy", "overall", metrics["accuracy"]])
+        writer.writerow(["macro_f1", "overall", metrics["macro_f1"]])
+        for idx, cls_name in enumerate(CLASSES):
+            writer.writerow(["precision", cls_name, metrics["precision"][idx]])
+            writer.writerow(["recall", cls_name, metrics["recall"][idx]])
+            writer.writerow(["class_f1", cls_name, metrics["class_f1"][idx]])
+
+    # 3. Split evaluation JSON
+    eval_json = artifact_dir / f"{split}_evaluation.json"
+    eval_data = {
+        "model_key": model_key,
+        "checkpoint": str(checkpoint_path),
+        "split": split,
+        "split_file": str(split_path),
+        "metrics": metrics,
+    }
+    with eval_json.open("w", encoding="utf-8") as f:
+        json.dump(eval_data, f, indent=4)
+
     return {
         "checkpoint": str(checkpoint_path),
         "predictions": predictions,
-        "metrics": evaluate_predictions(y_true, y_pred),
+        "metrics": metrics,
     }
