@@ -1,0 +1,12 @@
+metric,class,value
+accuracy,overall,0.9857142857142858
+macro_f1,overall,0.9630494027045752
+precision,Brittle,1.0
+recall,Brittle,0.9829059829059829
+class_f1,Brittle,0.9913793103448275
+precision,Ductile,0.9861111111111112
+recall,Ductile,1.0
+class_f1,Ductile,0.993006993006993
+precision,Mixed,0.9047619047619048
+recall,Mixed,0.9047619047619048
+class_f1,Mixed,0.9047619047619048
