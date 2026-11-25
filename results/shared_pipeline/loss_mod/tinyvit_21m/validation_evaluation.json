@@ -1,0 +1,42 @@
+{
+    "model_key": "tinyvit_21m",
+    "checkpoint": "/kaggle/working/sem-fracture-deep-learning/results/shared_pipeline/loss_mod/tinyvit_21m/tinyvit_21m_finetune_best.pth",
+    "split": "validation",
+    "split_file": "/kaggle/working/sem-fracture-deep-learning/dataset_split.csv",
+    "metrics": {
+        "confusion_matrix": [
+            [
+                117,
+                0,
+                0
+            ],
+            [
+                0,
+                142,
+                0
+            ],
+            [
+                0,
+                4,
+                17
+            ]
+        ],
+        "accuracy": 0.9857142857142858,
+        "precision": [
+            1.0,
+            0.9726027397260274,
+            1.0
+        ],
+        "recall": [
+            1.0,
+            1.0,
+            0.8095238095238095
+        ],
+        "class_f1": [
+            1.0,
+            0.9861111111111112,
+            0.8947368421052632
+        ],
+        "macro_f1": 0.9602826510721248
+    }
+}
