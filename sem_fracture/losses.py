@@ -3,6 +3,7 @@ from typing import Sequence
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 
 def compute_effective_number_weights(
@@ -76,3 +77,35 @@ class ClassBalancedCrossEntropyLoss(nn.Module):
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         return self._loss(logits, targets)
+
+
+class WeightedBinaryEvidenceLoss(nn.Module):
+    """Class-weighted binary cross-entropy over [Brittle, Ductile] evidence logits."""
+
+    def __init__(self, class_weights: torch.Tensor) -> None:
+        super().__init__()
+        self.register_buffer(
+            "binary_targets",
+            torch.tensor(
+                [
+                    [1.0, 0.0],  # Brittle only
+                    [0.0, 1.0],  # Ductile only
+                    [1.0, 1.0],  # Mixed: both
+                ],
+                dtype=torch.float32,
+            ),
+        )
+        self.register_buffer(
+            "class_weights",
+            torch.as_tensor(class_weights, dtype=torch.float32),
+        )
+
+    def forward(self, logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+        targets = self.binary_targets[labels]
+        two_losses = F.binary_cross_entropy_with_logits(
+            logits,
+            targets,
+            reduction="none",
+        ).mean(dim=1)
+        weights = self.class_weights[labels]
+        return (two_losses * weights).sum() / weights.sum().clamp_min(1e-8)

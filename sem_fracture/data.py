@@ -2,7 +2,7 @@ import csv
 from collections import Counter
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps
 import torch
 from torch.utils.data import Dataset
 
@@ -164,3 +164,98 @@ def build_transforms():
         ]
     )
     return train_transform, eval_transform
+
+
+BAG_PATCH_SIZE = 224
+BAG_CANVAS_SIZE = 448
+BAG_PATCH_STARTS = (0, 112, 224)
+BAG_N_PATCHES = 10
+BAG_TRAIN_VARIANTS = ("none", "hflip", "vflip", "hvflip")
+
+
+def _build_patch_transform():
+    from torchvision import transforms
+
+    return transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+        ]
+    )
+
+
+def make_bag(image, variant="none", patch_transform=None):
+    """Create a 10-view MIL bag (9 overlapping 224x224 crops + 1 global 224x224 view)."""
+    if patch_transform is None:
+        patch_transform = _build_patch_transform()
+
+    image = image.convert("RGB")
+    if variant in ("hflip", "hvflip"):
+        image = ImageOps.mirror(image)
+    if variant in ("vflip", "hvflip"):
+        image = ImageOps.flip(image)
+
+    working = image.resize(
+        (BAG_CANVAS_SIZE, BAG_CANVAS_SIZE),
+        Image.Resampling.BILINEAR,
+    )
+    crops = [
+        working.crop((x, y, x + BAG_PATCH_SIZE, y + BAG_PATCH_SIZE))
+        for y in BAG_PATCH_STARTS
+        for x in BAG_PATCH_STARTS
+    ]
+    global_view = image.resize(
+        (BAG_PATCH_SIZE, BAG_PATCH_SIZE),
+        Image.Resampling.BILINEAR,
+    )
+    crops.append(global_view)
+    return torch.stack([patch_transform(crop) for crop in crops], dim=0)
+
+
+class SEMBagDataset(Dataset):
+    """Dataset returning 10-view MIL image bags for Dual-Attention MIL."""
+
+    def __init__(self, records, data_dir, variants=("none",)):
+        self.records = records
+        self.data_dir = Path(data_dir)
+        self.variants = tuple(variants)
+        self.patch_transform = _build_patch_transform()
+
+    def __len__(self):
+        return len(self.records)
+
+    def __getitem__(self, index):
+        row = self.records[index]
+        if row["label"] not in CLASS_TO_INDEX:
+            raise ValueError(f"Unknown class label: {row['label']}")
+
+        variant = (
+            self.variants[torch.randint(len(self.variants), (1,)).item()]
+            if len(self.variants) > 1
+            else self.variants[0]
+        )
+        image_path = self.data_dir / row["label"] / row["filename"]
+        with Image.open(image_path) as source:
+            bag = make_bag(source, variant=variant, patch_transform=self.patch_transform)
+        return bag, CLASS_TO_INDEX[row["label"]]
+
+
+class CachedBagDataset(Dataset):
+    """Dataset wrapping pre-extracted (N, V, 10, feature_dim) bag embeddings."""
+
+    def __init__(self, features, labels, augment=False):
+        self.features = features
+        self.labels = torch.as_tensor(labels, dtype=torch.long)
+        self.augment = augment
+        if len(self.features) != len(self.labels):
+            raise ValueError("features and labels must have the same length")
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, index):
+        if self.augment and self.features.shape[1] > 1:
+            variant_idx = torch.randint(self.features.shape[1], (1,)).item()
+        else:
+            variant_idx = 0
+        return self.features[index, variant_idx], self.labels[index]

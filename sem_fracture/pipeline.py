@@ -3,19 +3,28 @@ import csv
 import json
 from pathlib import Path
 
+from PIL import Image
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
 from sem_fracture.data import (
+    BAG_TRAIN_VARIANTS,
     CLASSES,
+    CLASS_TO_INDEX,
+    CachedBagDataset,
     SEMDataset,
+    SEMBagDataset,
     build_transforms,
     compute_class_weights,
     load_split,
+    make_bag,
     prepare_training_split,
 )
-from sem_fracture.losses import ClassBalancedCrossEntropyLoss
+from sem_fracture.losses import (
+    ClassBalancedCrossEntropyLoss,
+    WeightedBinaryEvidenceLoss,
+)
 from sem_fracture.models import (
     MODEL_NAMES,
     configure_trainable_parameters,
@@ -87,6 +96,24 @@ def _split_datasets(records, data_dir):
     }
 
 
+def _extract_bag_features(model, records, data_dir, variants, device, patch_batch_size=16):
+    model.eval()
+    variant_tensors = []
+    for variant in variants:
+        features = []
+        for row in records:
+            image_path = Path(data_dir) / row["label"] / row["filename"]
+            with Image.open(image_path) as source:
+                bag = make_bag(source, variant=variant)
+            patch_vectors = []
+            for batch in bag.split(patch_batch_size, dim=0):
+                z = model.extract_embeddings(batch.to(device)).cpu().float()
+                patch_vectors.append(z)
+            features.append(torch.cat(patch_vectors, dim=0))
+        variant_tensors.append(torch.stack(features, dim=0).contiguous())
+    return torch.stack(variant_tensors, dim=1)
+
+
 def run_experiment(
     data_dir,
     model_key,
@@ -117,7 +144,12 @@ def run_experiment(
     model = create_model(model_key, pretrained=initial_checkpoint is None)
     if initial_checkpoint is not None:
         initial_checkpoint = _resolve_path(data_dir, initial_checkpoint)
-        load_checkpoint(model, initial_checkpoint, device)
+        target_module = (
+            model.backbone
+            if model_key == "tinyvit_21m_dual_attention"
+            else model
+        )
+        load_checkpoint(target_module, initial_checkpoint, device)
     model = model.to(device)
 
     parameter_groups = configure_trainable_parameters(
@@ -139,7 +171,33 @@ def run_experiment(
         seed=seed,
     )
     records = load_split(data_dir, split_file)
-    datasets = _split_datasets(records, data_dir)
+    training_records = [row for row in records if row["split"] == "train"]
+    val_records = [row for row in records if row["split"] == "validation"]
+    test_records = [row for row in records if row["split"] == "test"]
+
+    if model_key == "tinyvit_21m_dual_attention":
+        train_features = _extract_bag_features(
+            model, training_records, data_dir, BAG_TRAIN_VARIANTS, device
+        )
+        val_features = _extract_bag_features(
+            model, val_records, data_dir, ("none",), device
+        )
+        datasets = {
+            "train": CachedBagDataset(
+                train_features,
+                [CLASS_TO_INDEX[row["label"]] for row in training_records],
+                augment=True,
+            ),
+            "validation": CachedBagDataset(
+                val_features,
+                [CLASS_TO_INDEX[row["label"]] for row in val_records],
+                augment=False,
+            ),
+            "test": SEMBagDataset(test_records, data_dir, variants=("none",)),
+        }
+    else:
+        datasets = _split_datasets(records, data_dir)
+
     loaders = {
         "train": DataLoader(
             datasets["train"],
@@ -161,9 +219,10 @@ def run_experiment(
         ),
     }
 
-    training_records = [row for row in records if row["split"] == "train"]
     class_weights = compute_class_weights(records)
-    if loss_type == "cross_entropy":
+    if model_key == "tinyvit_21m_dual_attention":
+        criterion = WeightedBinaryEvidenceLoss(class_weights).to(device)
+    elif loss_type == "cross_entropy":
         criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
     elif loss_type == "class_balanced":
         training_counts = Counter(row["label"] for row in training_records)
@@ -233,8 +292,11 @@ def run_prediction(
     if not records:
         raise ValueError(f"No records found for split: {split}")
 
-    _, eval_transform = build_transforms()
-    dataset = SEMDataset(records, data_dir, eval_transform)
+    if model_key == "tinyvit_21m_dual_attention":
+        dataset = SEMBagDataset(records, data_dir, variants=("none",))
+    else:
+        _, eval_transform = build_transforms()
+        dataset = SEMDataset(records, data_dir, eval_transform)
     loader = DataLoader(
         dataset,
         batch_size=batch_size,
