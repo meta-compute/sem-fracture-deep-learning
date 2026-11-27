@@ -7,7 +7,7 @@ def load_checkpoint(model, checkpoint_path, device):
     checkpoint = torch.load(
         Path(checkpoint_path),
         map_location="cpu",
-        weights_only=True,
+        weights_only=False,
     )
     if "model_state_dict" not in checkpoint:
         raise ValueError("Checkpoint is missing model_state_dict")

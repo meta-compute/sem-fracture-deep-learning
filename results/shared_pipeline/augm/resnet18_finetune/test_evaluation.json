@@ -1,0 +1,42 @@
+{
+    "model_key": "resnet18",
+    "checkpoint": "/kaggle/working/sem-fracture-deep-learning/results/shared_pipeline/augm/resnet18_finetune/resnet18_finetune_best.pth",
+    "split": "test",
+    "split_file": "/kaggle/working/sem-fracture-deep-learning/dataset_split_augmented.csv",
+    "metrics": {
+        "confusion_matrix": [
+            [
+                106,
+                0,
+                10
+            ],
+            [
+                0,
+                135,
+                8
+            ],
+            [
+                0,
+                5,
+                15
+            ]
+        ],
+        "accuracy": 0.9175627240143369,
+        "precision": [
+            1.0,
+            0.9642857142857143,
+            0.45454545454545453
+        ],
+        "recall": [
+            0.9137931034482759,
+            0.9440559440559441,
+            0.75
+        ],
+        "class_f1": [
+            0.9549549549549551,
+            0.9540636042402827,
+            0.5660377358490566
+        ],
+        "macro_f1": 0.8250187650147648
+    }
+}

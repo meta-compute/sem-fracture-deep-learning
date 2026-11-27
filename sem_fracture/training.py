@@ -4,7 +4,7 @@ import time
 
 import torch
 
-from sem_fracture.models import MODEL_NAMES, set_training_mode
+from sem_fracture.models import MODEL_NAMES, class_probabilities, set_training_mode
 
 
 def classification_metrics(y_true, y_pred, num_classes=3):
@@ -58,7 +58,12 @@ def _evaluate(model, loader, criterion, device):
             loss_total += loss.item() * batch_size
             sample_count += batch_size
             y_true.extend(labels.cpu().tolist())
-            y_pred.extend(outputs.argmax(dim=1).cpu().tolist())
+            preds = (
+                class_probabilities(outputs).argmax(dim=1)
+                if outputs.shape[1] == 2
+                else outputs.argmax(dim=1)
+            )
+            y_pred.extend(preds.cpu().tolist())
 
     if not sample_count:
         raise ValueError("Evaluation loader is empty")
@@ -78,6 +83,7 @@ def train_model(
     checkpoint_path,
     patience=None,
     grad_clip_norm=None,
+    scheduler=None,
 ):
     if model_key not in MODEL_NAMES:
         raise ValueError(f"Unknown model key: {model_key}")
@@ -129,6 +135,8 @@ def train_model(
             raise ValueError("Training loader is empty")
         train_loss = loss_total / sample_count
         val_loss, val_metrics = _evaluate(model, val_loader, criterion, device)
+        if scheduler is not None:
+            scheduler.step()
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)
         history["val_accuracy"].append(val_metrics["accuracy"])
