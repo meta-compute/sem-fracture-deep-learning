@@ -41,7 +41,17 @@ def classification_metrics(y_true, y_pred, num_classes=3):
     }
 
 
-def _evaluate(model, loader, criterion, device):
+def _predicted_classes(outputs, model_key):
+    if model_key == "dinov2_vitb14" and outputs.shape[1] == 2:
+        from sem_fracture.dinov2_ordinal import class_index_from_ordinal_logits
+
+        return class_index_from_ordinal_logits(outputs)
+    if outputs.shape[1] == 2:
+        return class_probabilities(outputs).argmax(dim=1)
+    return outputs.argmax(dim=1)
+
+
+def _evaluate(model, loader, criterion, device, model_key):
     model.eval()
     loss_total = 0.0
     sample_count = 0
@@ -58,12 +68,7 @@ def _evaluate(model, loader, criterion, device):
             loss_total += loss.item() * batch_size
             sample_count += batch_size
             y_true.extend(labels.cpu().tolist())
-            preds = (
-                class_probabilities(outputs).argmax(dim=1)
-                if outputs.shape[1] == 2
-                else outputs.argmax(dim=1)
-            )
-            y_pred.extend(preds.cpu().tolist())
+            y_pred.extend(_predicted_classes(outputs, model_key).cpu().tolist())
 
     if not sample_count:
         raise ValueError("Evaluation loader is empty")
@@ -134,7 +139,9 @@ def train_model(
         if not sample_count:
             raise ValueError("Training loader is empty")
         train_loss = loss_total / sample_count
-        val_loss, val_metrics = _evaluate(model, val_loader, criterion, device)
+        val_loss, val_metrics = _evaluate(
+            model, val_loader, criterion, device, model_key
+        )
         if scheduler is not None:
             scheduler.step()
         history["train_loss"].append(train_loss)

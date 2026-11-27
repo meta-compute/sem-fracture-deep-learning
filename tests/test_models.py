@@ -63,6 +63,7 @@ class ModelConfigurationTests(unittest.TestCase):
                 "tinyvit_11m": "tiny_vit_11m_224.in1k",
                 "tinyvit_21m": "tiny_vit_21m_224.in1k",
                 "tinyvit_21m_dual_attention": "tiny_vit_21m_224.in1k",
+                "dinov2_vitb14": "dinov2_vitb14",
             },
         )
 
@@ -132,6 +133,38 @@ class ModelConfigurationTests(unittest.TestCase):
         self.assertEqual(probs.shape, (2, 3))
         self.assertTrue(torch.allclose(probs.sum(dim=1), torch.ones(2), atol=1e-5))
         self.assertTrue(torch.isfinite(loss))
+
+    def test_dinov2_head_only_freezes_backbone_and_finetune_opens_last_two_blocks(self):
+        from sem_fracture.dinov2_ordinal import DinoV2OrdinalClassifier
+
+        class _FakeDino(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.embed_dim = 8
+                self.blocks = nn.ModuleList(nn.Linear(8, 8) for _ in range(4))
+
+            def forward(self, images):
+                return images.mean(dim=(2, 3))
+
+        head_only = DinoV2OrdinalClassifier(_FakeDino())
+        configure_trainable_parameters(head_only, "dinov2_vitb14", "head_only", head_lr=1e-3)
+        set_training_mode(head_only, "dinov2_vitb14")
+        self.assertTrue(all(parameter.requires_grad for parameter in head_only.head.parameters()))
+        self.assertFalse(any(parameter.requires_grad for parameter in head_only.backbone.parameters()))
+        self.assertTrue(head_only.head.training)
+        self.assertFalse(head_only.backbone.blocks[-1].training)
+
+        finetune = DinoV2OrdinalClassifier(_FakeDino())
+        groups = configure_trainable_parameters(
+            finetune, "dinov2_vitb14", "finetune", backbone_lr=1e-5, head_lr=1e-4
+        )
+        set_training_mode(finetune, "dinov2_vitb14")
+        self.assertFalse(any(parameter.requires_grad for parameter in finetune.backbone.blocks[0].parameters()))
+        self.assertTrue(all(parameter.requires_grad for parameter in finetune.backbone.blocks[-1].parameters()))
+        self.assertTrue(all(parameter.requires_grad for parameter in finetune.backbone.blocks[-2].parameters()))
+        self.assertTrue(finetune.backbone.blocks[-1].training)
+        self.assertFalse(finetune.backbone.blocks[0].training)
+        self.assertEqual([group["lr"] for group in groups], [1e-5, 1e-5, 1e-4])
 
 
 if __name__ == "__main__":

@@ -75,8 +75,13 @@ def _save_training_artifacts(checkpoint_path, history, best_checkpoint, class_we
         json.dump(summary_data, f, indent=4)
 
 
-def _split_datasets(records, data_dir):
-    train_transform, eval_transform = build_transforms()
+def _split_datasets(records, data_dir, model_key=None):
+    if model_key == "dinov2_vitb14":
+        from sem_fracture.dinov2_ordinal import build_dinov2_transforms
+
+        train_transform, eval_transform = build_dinov2_transforms()
+    else:
+        train_transform, eval_transform = build_transforms()
     return {
         "train": SEMDataset(
             [row for row in records if row["split"] == "train"],
@@ -196,7 +201,7 @@ def run_experiment(
             "test": SEMBagDataset(test_records, data_dir, variants=("none",)),
         }
     else:
-        datasets = _split_datasets(records, data_dir)
+        datasets = _split_datasets(records, data_dir, model_key)
 
     loaders = {
         "train": DataLoader(
@@ -220,7 +225,14 @@ def run_experiment(
     }
 
     class_weights = compute_class_weights(records)
-    if model_key == "tinyvit_21m_dual_attention":
+    if model_key == "dinov2_vitb14":
+        from sem_fracture.dinov2_ordinal import (
+            CLASS_INDEX_ORDINAL_TARGETS,
+            OrdinalBCEWithLogitsLoss,
+        )
+
+        criterion = OrdinalBCEWithLogitsLoss(CLASS_INDEX_ORDINAL_TARGETS).to(device)
+    elif model_key == "tinyvit_21m_dual_attention":
         criterion = WeightedBinaryEvidenceLoss(class_weights).to(device)
     elif loss_type == "cross_entropy":
         criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
@@ -294,6 +306,11 @@ def run_prediction(
 
     if model_key == "tinyvit_21m_dual_attention":
         dataset = SEMBagDataset(records, data_dir, variants=("none",))
+    elif model_key == "dinov2_vitb14":
+        from sem_fracture.dinov2_ordinal import build_dinov2_transforms
+
+        _, eval_transform = build_dinov2_transforms()
+        dataset = SEMDataset(records, data_dir, eval_transform)
     else:
         _, eval_transform = build_transforms()
         dataset = SEMDataset(records, data_dir, eval_transform)
@@ -322,7 +339,7 @@ def run_prediction(
             f"{expected_model_name}"
         )
 
-    y_true, y_pred = predict(model, loader, device)
+    y_true, y_pred = predict(model, loader, device, model_key=model_key)
     metrics = evaluate_predictions(y_true, y_pred)
     predictions = [
         {

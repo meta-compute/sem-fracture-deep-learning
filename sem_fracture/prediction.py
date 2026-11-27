@@ -17,7 +17,7 @@ def load_checkpoint(model, checkpoint_path, device):
     return checkpoint
 
 
-def predict(model, loader, device):
+def predict(model, loader, device, model_key=None):
     model.eval()
     y_true = []
     y_pred = []
@@ -26,7 +26,13 @@ def predict(model, loader, device):
         for images, labels in loader:
             outputs = model(images.to(device))
             y_true.extend(labels.tolist())
-            y_pred.extend(outputs.argmax(dim=1).cpu().tolist())
+            if model_key == "dinov2_vitb14" and outputs.shape[1] == 2:
+                from sem_fracture.dinov2_ordinal import class_index_from_ordinal_logits
+
+                predicted = class_index_from_ordinal_logits(outputs)
+            else:
+                predicted = outputs.argmax(dim=1)
+            y_pred.extend(predicted.cpu().tolist())
 
     return y_true, y_pred
 

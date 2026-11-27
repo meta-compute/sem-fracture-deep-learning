@@ -3,11 +3,12 @@ import torch.nn as nn
 
 
 MODEL_NAMES = {
-"resnet18": None,
-"deit_tiny": "deit_tiny_patch16_224.fb_in1k",
-"tinyvit_11m": "tiny_vit_11m_224.in1k",
-"tinyvit_21m": "tiny_vit_21m_224.in1k",
-"tinyvit_21m_dual_attention": "tiny_vit_21m_224.in1k",
+    "resnet18": None,
+    "deit_tiny": "deit_tiny_patch16_224.fb_in1k",
+    "tinyvit_11m": "tiny_vit_11m_224.in1k",
+    "tinyvit_21m": "tiny_vit_21m_224.in1k",
+    "tinyvit_21m_dual_attention": "tiny_vit_21m_224.in1k",
+    "dinov2_vitb14": "dinov2_vitb14",
 }
 
 
@@ -91,6 +92,11 @@ def create_model(model_key, pretrained=True, num_classes=3):
     if model_key not in MODEL_NAMES:
         raise ValueError(f"Unknown model key: {model_key}")
 
+    if model_key == "dinov2_vitb14":
+        from sem_fracture.dinov2_ordinal import build_dinov2_ordinal_model
+
+        return build_dinov2_ordinal_model()
+
     if model_key == "resnet18":
         from torchvision import models
 
@@ -130,6 +136,8 @@ def _fine_tune_modules(model, model_key):
         return [model.layer4[-1]]
     if model_key == "deit_tiny":
         return list(model.blocks[-2:])
+    if model_key == "dinov2_vitb14":
+        return list(model.backbone.blocks[-2:])
     return [model.stages[-1]]
 
 
@@ -181,3 +189,8 @@ def set_training_mode(model, model_key):
             block.attn.train()
     elif model_key == "tinyvit_21m_dual_attention":
         model.mil_head.train()
+    elif model_key == "dinov2_vitb14":
+        model.head.train()
+        for block in model.backbone.blocks[-2:]:
+            if any(parameter.requires_grad for parameter in block.parameters()):
+                block.train()
