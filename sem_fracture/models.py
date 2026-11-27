@@ -3,11 +3,11 @@ import torch.nn as nn
 
 
 MODEL_NAMES = {
-    "resnet18": None,
-    "deit_tiny": "deit_tiny_patch16_224.fb_in1k",
-    "tinyvit_11m": "tiny_vit_11m_224.in1k",
-    "tinyvit_21m": "tiny_vit_21m_224.in1k",
-    "tinyvit_21m_dual_attention": "tiny_vit_21m_224.in1k",
+"resnet18": None,
+"deit_tiny": "deit_tiny_patch16_224.fb_in1k",
+"tinyvit_11m": "tiny_vit_11m_224.in1k",
+"tinyvit_21m": "tiny_vit_21m_224.in1k",
+"tinyvit_21m_dual_attention": "tiny_vit_21m_224.in1k",
 }
 
 
