@@ -1,0 +1,42 @@
+{
+    "model_key": "tinyvit_21m_dual_attention",
+    "checkpoint": "/kaggle/working/sem-fracture-deep-learning/results/shared_pipeline/tinyvit_21m_dual_attention/class_balanced/tinyvit_21m_dual_attention_head_only_best.pth",
+    "split": "test",
+    "split_file": "/kaggle/working/sem-fracture-deep-learning/dataset_split.csv",
+    "metrics": {
+        "confusion_matrix": [
+            [
+                114,
+                0,
+                2
+            ],
+            [
+                0,
+                130,
+                13
+            ],
+            [
+                2,
+                1,
+                17
+            ]
+        ],
+        "accuracy": 0.9354838709677419,
+        "precision": [
+            0.9827586206896551,
+            0.9923664122137404,
+            0.53125
+        ],
+        "recall": [
+            0.9827586206896551,
+            0.9090909090909091,
+            0.85
+        ],
+        "class_f1": [
+            0.9827586206896551,
+            0.948905109489051,
+            0.6538461538461537
+        ],
+        "macro_f1": 0.8618366280082866
+    }
+}
