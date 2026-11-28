@@ -1,0 +1,42 @@
+{
+    "model_key": "dinov2_vitb14",
+    "checkpoint": "/kaggle/working/sem-fracture-deep-learning/results/shared_pipeline/dinov2_vitb14/no-aug/dinov2_vitb14_finetune_best.pth",
+    "split": "validation",
+    "split_file": "/kaggle/working/sem-fracture-deep-learning/dataset_split.csv",
+    "metrics": {
+        "confusion_matrix": [
+            [
+                117,
+                0,
+                0
+            ],
+            [
+                0,
+                142,
+                0
+            ],
+            [
+                1,
+                2,
+                18
+            ]
+        ],
+        "accuracy": 0.9892857142857143,
+        "precision": [
+            0.9915254237288136,
+            0.9861111111111112,
+            1.0
+        ],
+        "recall": [
+            1.0,
+            1.0,
+            0.8571428571428571
+        ],
+        "class_f1": [
+            0.9957446808510638,
+            0.993006993006993,
+            0.923076923076923
+        ],
+        "macro_f1": 0.97060953231166
+    }
+}
