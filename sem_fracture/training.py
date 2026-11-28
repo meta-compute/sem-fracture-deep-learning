@@ -41,17 +41,19 @@ def classification_metrics(y_true, y_pred, num_classes=3):
     }
 
 
-def _predicted_classes(outputs, model_key):
+def _predicted_classes(outputs, model_key, prediction_threshold=0.5):
     if model_key == "dinov2_vitb14" and outputs.shape[1] == 2:
         from sem_fracture.dinov2_ordinal import class_index_from_ordinal_logits
 
-        return class_index_from_ordinal_logits(outputs)
+        return class_index_from_ordinal_logits(
+            outputs, threshold=prediction_threshold
+        )
     if outputs.shape[1] == 2:
         return class_probabilities(outputs).argmax(dim=1)
     return outputs.argmax(dim=1)
 
 
-def _evaluate(model, loader, criterion, device, model_key):
+def _evaluate(model, loader, criterion, device, model_key, prediction_threshold=0.5):
     model.eval()
     loss_total = 0.0
     sample_count = 0
@@ -68,7 +70,13 @@ def _evaluate(model, loader, criterion, device, model_key):
             loss_total += loss.item() * batch_size
             sample_count += batch_size
             y_true.extend(labels.cpu().tolist())
-            y_pred.extend(_predicted_classes(outputs, model_key).cpu().tolist())
+            y_pred.extend(
+                _predicted_classes(
+                    outputs, model_key, prediction_threshold=prediction_threshold
+                )
+                .cpu()
+                .tolist()
+            )
 
     if not sample_count:
         raise ValueError("Evaluation loader is empty")
@@ -89,11 +97,16 @@ def train_model(
     patience=None,
     grad_clip_norm=None,
     scheduler=None,
+    prediction_threshold=0.5,
 ):
     if model_key not in MODEL_NAMES:
         raise ValueError(f"Unknown model key: {model_key}")
     if epochs <= 0:
         raise ValueError("epochs must be positive")
+    if not 0.0 < prediction_threshold < 1.0:
+        raise ValueError(
+            f"prediction_threshold must be in (0, 1), got {prediction_threshold}"
+        )
 
     device = torch.device(device)
     checkpoint_path = Path(checkpoint_path)
@@ -140,7 +153,12 @@ def train_model(
             raise ValueError("Training loader is empty")
         train_loss = loss_total / sample_count
         val_loss, val_metrics = _evaluate(
-            model, val_loader, criterion, device, model_key
+            model,
+            val_loader,
+            criterion,
+            device,
+            model_key,
+            prediction_threshold=prediction_threshold,
         )
         if scheduler is not None:
             scheduler.step()

@@ -35,19 +35,20 @@ from sem_fracture.training import classification_metrics
 
 ORDINAL_CLASS_NAMES: tuple[str, ...] = ("brittle", "mixed", "ductile")
 DISPLAY_CLASS_NAMES: tuple[str, ...] = ("Brittle", "Mixed", "Ductile")
+# Two evidence bits: [Brittle present, Ductile present]. Both present => Mixed.
+# ImageFolder order: brittle, mixed, ductile.
 ORDINAL_TARGETS = (
-    (0.0, 0.0),  # brittle
-    (1.0, 0.0),  # mixed
-    (1.0, 1.0),  # ductile
+    (1.0, 0.0),  # brittle
+    (1.0, 1.0),  # mixed
+    (0.0, 1.0),  # ductile
 )
 # sem_fracture.data.CLASSES index order: Brittle, Ductile, Mixed.
 CLASS_INDEX_ORDINAL_TARGETS = (
-    (0.0, 0.0),  # 0 Brittle
-    (1.0, 1.0),  # 1 Ductile
-    (1.0, 0.0),  # 2 Mixed
+    (1.0, 0.0),  # 0 Brittle
+    (0.0, 1.0),  # 1 Ductile
+    (1.0, 1.0),  # 2 Mixed
 )
-# Bit-sum rank (brittle, mixed, ductile) -> CLASSES index.
-RANK_TO_CLASS_INDEX = (0, 2, 1)
+CLASS_INDEX_EVIDENCE_TARGETS = CLASS_INDEX_ORDINAL_TARGETS
 IMAGE_SIZE = 518
 PATCH_SIZE = 14
 HUB_REPO = "facebookresearch/dinov2"
@@ -56,32 +57,55 @@ EMBED_DIM = 768
 
 
 def encode_ordinal_targets(class_indices: torch.Tensor) -> torch.Tensor:
-    """Map class indices 0, 1, 2 onto the 2-bit ductility codes."""
+    """Map ImageFolder indices (brittle, mixed, ductile) onto evidence bits."""
     table = class_indices.new_tensor(ORDINAL_TARGETS, dtype=torch.float32)
     if class_indices.dtype != torch.long:
         class_indices = class_indices.long()
     if class_indices.numel() and (
         int(class_indices.min()) < 0 or int(class_indices.max()) > 2
     ):
-        raise ValueError("Ordinal class indices must be 0 (brittle), 1 (mixed), or 2 (ductile)")
+        raise ValueError("Class indices must be 0 (brittle), 1 (mixed), or 2 (ductile)")
     return table[class_indices]
 
 
 def decode_ordinal_logits(logits: torch.Tensor, threshold: float = 0.5) -> torch.Tensor:
-    """Recover a ductility rank by summing sigmoid outputs that exceed ``threshold``.
+    """Decode evidence logits to ImageFolder indices: brittle, mixed, ductile.
 
-    Rank 0 is brittle, 1 is mixed, and 2 is ductile.
+    Bit 0 = Brittle evidence, bit 1 = Ductile evidence. Both above ``threshold``
+    means Mixed. If neither bit clears the threshold, fall back to soft joint
+    probabilities (same rule as dual-attention).
+    """
+    class_index = class_index_from_ordinal_logits(logits, threshold=threshold)
+    # CLASSES: Brittle 0, Ductile 1, Mixed 2 -> folder: brittle 0, mixed 1, ductile 2
+    folder_from_class = class_index.new_tensor((0, 2, 1))
+    return folder_from_class[class_index]
+
+
+def class_index_from_ordinal_logits(
+    logits: torch.Tensor, threshold: float = 0.5
+) -> torch.Tensor:
+    """Decode [Brittle, Ductile] evidence logits to CLASSES indices.
+
+    - Brittle evidence only -> Brittle (0)
+    - Ductile evidence only -> Ductile (1)
+    - Both above ``threshold`` -> Mixed (2)
+    - Neither -> soft joint argmax (dual-attention style fallback)
     """
     if logits.ndim != 2 or logits.shape[1] != 2:
         raise ValueError(f"Expected logits of shape (N, 2), got {tuple(logits.shape)}")
-    return (torch.sigmoid(logits) > threshold).sum(dim=1)
+    if not 0.0 < threshold < 1.0:
+        raise ValueError(f"threshold must be in (0, 1), got {threshold}")
 
+    from sem_fracture.models import class_probabilities
 
-def class_index_from_ordinal_logits(logits: torch.Tensor, threshold: float = 0.5) -> torch.Tensor:
-    """Map an ordinal rank onto ``CLASSES`` indices: Brittle 0, Ductile 1, Mixed 2."""
-    rank = decode_ordinal_logits(logits, threshold)
-    mapping = rank.new_tensor(RANK_TO_CLASS_INDEX)
-    return mapping[rank]
+    evidence = torch.sigmoid(logits)
+    brittle = evidence[:, 0] > threshold
+    ductile = evidence[:, 1] > threshold
+    predicted = class_probabilities(logits).argmax(dim=1)
+    predicted = torch.where(brittle & ~ductile, torch.zeros_like(predicted), predicted)
+    predicted = torch.where(~brittle & ductile, torch.ones_like(predicted), predicted)
+    predicted = torch.where(brittle & ductile, torch.full_like(predicted, 2), predicted)
+    return predicted
 
 
 class OrdinalBCEWithLogitsLoss(nn.Module):

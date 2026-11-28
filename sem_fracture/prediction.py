@@ -17,10 +17,14 @@ def load_checkpoint(model, checkpoint_path, device):
     return checkpoint
 
 
-def predict(model, loader, device, model_key=None):
+def predict(model, loader, device, model_key=None, prediction_threshold=0.5):
     model.eval()
     y_true = []
     y_pred = []
+    if not 0.0 < prediction_threshold < 1.0:
+        raise ValueError(
+            f"prediction_threshold must be in (0, 1), got {prediction_threshold}"
+        )
 
     with torch.inference_mode():
         for images, labels in loader:
@@ -29,7 +33,9 @@ def predict(model, loader, device, model_key=None):
             if model_key == "dinov2_vitb14" and outputs.shape[1] == 2:
                 from sem_fracture.dinov2_ordinal import class_index_from_ordinal_logits
 
-                predicted = class_index_from_ordinal_logits(outputs)
+                predicted = class_index_from_ordinal_logits(
+                    outputs, threshold=prediction_threshold
+                )
             else:
                 predicted = outputs.argmax(dim=1)
             y_pred.extend(predicted.cpu().tolist())

@@ -140,6 +140,7 @@ def run_experiment(
     min_lr=1e-7,
     loss_type="cross_entropy",
     cb_beta=0.999,
+    prediction_threshold=0.5,
 ):
     if loss_type not in ("cross_entropy", "binary_cross_entropy", "class_balanced"):
         raise ValueError(
@@ -283,6 +284,7 @@ def run_experiment(
         patience=patience,
         grad_clip_norm=grad_clip_norm,
         scheduler=scheduler,
+        prediction_threshold=prediction_threshold,
     )
     _save_training_artifacts(
         checkpoint_path=checkpoint_path,
@@ -309,6 +311,7 @@ def run_prediction(
     split_file="dataset_split.csv",
     device="cpu",
     batch_size=16,
+    prediction_threshold=0.5,
 ):
     if model_key not in MODEL_NAMES:
         raise ValueError(f"Unknown model key: {model_key}")
@@ -361,7 +364,13 @@ def run_prediction(
             f"{expected_model_name}"
         )
 
-    y_true, y_pred = predict(model, loader, device, model_key=model_key)
+    y_true, y_pred = predict(
+        model,
+        loader,
+        device,
+        model_key=model_key,
+        prediction_threshold=prediction_threshold,
+    )
     metrics = evaluate_predictions(y_true, y_pred)
     predictions = [
         {

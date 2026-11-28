@@ -48,70 +48,68 @@ def _write_ordinal_split(root: Path) -> None:
 
 
 class OrdinalTargetTests(unittest.TestCase):
-    def test_targets_follow_ductility_progression(self):
+    def test_targets_are_brittle_ductile_evidence_bits(self):
         encoded = encode_ordinal_targets(torch.tensor([0, 1, 2]))
         self.assertTrue(
             torch.equal(
                 encoded,
-                torch.tensor([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]),
+                torch.tensor([[1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]),
             )
         )
 
-    def test_loss_matches_bce_with_logits_on_ordinal_codes(self):
+    def test_loss_matches_bce_with_logits_on_evidence_codes(self):
         logits = torch.tensor([[0.2, -0.4], [1.5, 0.1], [-0.3, 0.8]])
         labels = torch.tensor([0, 1, 2])
         expected = nn.BCEWithLogitsLoss()(
             logits,
-            torch.tensor([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]),
+            torch.tensor([[1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]),
         )
         actual = OrdinalBCEWithLogitsLoss()(logits, labels)
         self.assertAlmostEqual(actual.item(), expected.item(), places=6)
 
-    def test_decode_sums_thresholded_sigmoid_outputs(self):
+    def test_decode_uses_evidence_presence_rules(self):
         logits = torch.tensor(
             [
-                [-10.0, -10.0],
                 [10.0, -10.0],
                 [10.0, 10.0],
-                [0.0, 0.0],
                 [-10.0, 10.0],
             ]
         )
-        decoded = decode_ordinal_logits(logits)
-        self.assertTrue(torch.equal(decoded, torch.tensor([0, 1, 2, 0, 1])))
-
-    def test_pipeline_labels_map_rank_onto_brittle_ductile_mixed(self):
-        logits = torch.tensor(
-            [
-                [-10.0, -10.0],
-                [10.0, -10.0],
-                [10.0, 10.0],
-            ]
+        # ImageFolder indices: brittle, mixed, ductile
+        self.assertTrue(
+            torch.equal(decode_ordinal_logits(logits), torch.tensor([0, 1, 2]))
         )
-        # CLASSES index: Brittle 0, Ductile 1, Mixed 2
+        # CLASSES indices: Brittle, Ductile, Mixed
         self.assertTrue(
             torch.equal(
                 class_index_from_ordinal_logits(logits),
                 torch.tensor([0, 2, 1]),
             )
         )
+        both_high = torch.tensor([[2.0, 2.0]])
+        self.assertEqual(
+            int(class_index_from_ordinal_logits(both_high, threshold=0.6).item()),
+            2,
+        )
+
+    def test_pipeline_evidence_targets_match_class_order(self):
         loss = OrdinalBCEWithLogitsLoss(CLASS_INDEX_ORDINAL_TARGETS)(
             torch.zeros(3, 2),
             torch.tensor([0, 1, 2]),
         )
         expected = nn.BCEWithLogitsLoss()(
             torch.zeros(3, 2),
-            torch.tensor(CLASS_INDEX_ORDINAL_TARGETS),
+            torch.tensor([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]),
         )
         self.assertAlmostEqual(loss.item(), expected.item(), places=6)
 
-    def test_shared_evaluator_uses_ordinal_decoder_for_dinov2(self):
+    def test_shared_evaluator_uses_evidence_decoder_for_dinov2(self):
         class _Fixed(nn.Module):
             def forward(self, images):
-                return torch.tensor([[10.0, -10.0]]).expand(images.shape[0], 2)
+                return torch.tensor([[10.0, 10.0]]).expand(images.shape[0], 2)
 
         images = torch.zeros(2, 3, 8, 8)
-        labels = torch.tensor([2, 2])
+        labels = torch.tensor([2, 2])  # Mixed
         loader = torch.utils.data.DataLoader(
             torch.utils.data.TensorDataset(images, labels),
             batch_size=2,
@@ -122,6 +120,7 @@ class OrdinalTargetTests(unittest.TestCase):
             OrdinalBCEWithLogitsLoss(CLASS_INDEX_ORDINAL_TARGETS),
             torch.device("cpu"),
             "dinov2_vitb14",
+            prediction_threshold=0.6,
         )
         self.assertAlmostEqual(metrics["accuracy"], 1.0)
         self.assertTrue(torch.isfinite(torch.tensor(loss)))
