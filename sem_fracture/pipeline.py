@@ -1,4 +1,3 @@
-from collections import Counter
 import csv
 import json
 from pathlib import Path
@@ -18,6 +17,7 @@ from sem_fracture.data import (
     build_transforms,
     compute_class_weights,
     load_split,
+    training_class_counts,
     make_bag,
     prepare_training_split,
 )
@@ -141,12 +141,26 @@ def run_experiment(
     loss_type="cross_entropy",
     cb_beta=0.999,
 ):
+    if loss_type not in ("cross_entropy", "binary_cross_entropy", "class_balanced"):
+        raise ValueError(
+            "loss_type must be 'cross_entropy', 'binary_cross_entropy', or 'class_balanced'"
+        )
+
     data_dir = Path(data_dir).resolve()
     checkpoint_path = _resolve_path(data_dir, checkpoint_path)
     if checkpoint_path.exists():
         raise FileExistsError(f"Checkpoint already exists: {checkpoint_path}")
 
-    model = create_model(model_key, pretrained=initial_checkpoint is None)
+    num_classes = (
+        2
+        if model_key == "dinov2_vitb14" and loss_type == "binary_cross_entropy"
+        else 3
+    )
+    model = create_model(
+        model_key,
+        pretrained=initial_checkpoint is None,
+        num_classes=num_classes,
+    )
     if initial_checkpoint is not None:
         initial_checkpoint = _resolve_path(data_dir, initial_checkpoint)
         target_module = (
@@ -225,7 +239,7 @@ def run_experiment(
     }
 
     class_weights = compute_class_weights(records)
-    if model_key == "dinov2_vitb14":
+    if model_key == "dinov2_vitb14" and loss_type == "binary_cross_entropy":
         from sem_fracture.dinov2_ordinal import (
             CLASS_INDEX_ORDINAL_TARGETS,
             OrdinalBCEWithLogitsLoss,
@@ -237,13 +251,16 @@ def run_experiment(
     elif loss_type == "cross_entropy":
         criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
     elif loss_type == "class_balanced":
-        training_counts = Counter(row["label"] for row in training_records)
-        class_counts = [training_counts[label] for label in CLASSES]
+        class_counts = training_class_counts(records)
         criterion = ClassBalancedCrossEntropyLoss(
             class_counts=class_counts,
             beta=cb_beta,
         ).to(device)
         class_weights = criterion.weight.detach().cpu()
+    elif loss_type == "binary_cross_entropy":
+        from sem_fracture.losses import BinaryCrossEntropyLoss
+
+        criterion = BinaryCrossEntropyLoss(num_classes=3).to(device)
     else:
         raise ValueError(f"Unknown loss_type: {loss_type}")
 
@@ -320,7 +337,12 @@ def run_prediction(
         shuffle=False,
         num_workers=0,
     )
-    model = create_model(model_key, pretrained=False)
+    num_classes = 3
+    if model_key == "dinov2_vitb14":
+        saved = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+        head_weight = saved["model_state_dict"]["head.4.weight"]
+        num_classes = int(head_weight.shape[0])
+    model = create_model(model_key, pretrained=False, num_classes=num_classes)
     checkpoint = load_checkpoint(model, checkpoint_path, device)
 
     checkpoint_model = checkpoint.get("model_key")

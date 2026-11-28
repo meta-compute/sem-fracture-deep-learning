@@ -1,8 +1,10 @@
 import unittest
 
 import torch
+from torch import nn
 
 from sem_fracture.losses import (
+    BinaryCrossEntropyLoss,
     ClassBalancedCrossEntropyLoss,
     compute_effective_number_weights,
 )
@@ -67,6 +69,16 @@ class ClassBalancedLossTests(unittest.TestCase):
         loss.backward()
         self.assertIsNotNone(logits.grad)
         self.assertTrue(torch.isfinite(logits.grad).all().item())
+
+
+class BinaryCrossEntropyLossTests(unittest.TestCase):
+    def test_one_hot_bce_matches_bce_with_logits(self):
+        logits = torch.tensor([[1.0, -1.0, 0.2], [0.0, 2.0, -0.5]])
+        labels = torch.tensor([0, 1])
+        one_hot = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+        expected = nn.BCEWithLogitsLoss()(logits, one_hot)
+        actual = BinaryCrossEntropyLoss(num_classes=3)(logits, labels)
+        self.assertAlmostEqual(actual.item(), expected.item(), places=6)
 
 
 if __name__ == "__main__":

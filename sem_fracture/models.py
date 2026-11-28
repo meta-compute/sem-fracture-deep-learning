@@ -95,7 +95,7 @@ def create_model(model_key, pretrained=True, num_classes=3):
     if model_key == "dinov2_vitb14":
         from sem_fracture.dinov2_ordinal import build_dinov2_ordinal_model
 
-        return build_dinov2_ordinal_model()
+        return build_dinov2_ordinal_model(num_outputs=num_classes)
 
     if model_key == "resnet18":
         from torchvision import models

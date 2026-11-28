@@ -226,10 +226,16 @@ def _embed_dim(backbone: nn.Module) -> int:
 
 
 class DinoV2OrdinalClassifier(nn.Module):
-    """Pretrained DINOv2 backbone plus a 2-logit ordinal head."""
+    """Pretrained DINOv2 backbone plus a classification head.
 
-    def __init__(self, backbone: nn.Module, dropout: float = 0.3) -> None:
+    ``num_outputs=2`` is the ordinal binary head. ``num_outputs=3`` is the
+    standard three-class head used with cross-entropy losses.
+    """
+
+    def __init__(self, backbone: nn.Module, dropout: float = 0.3, num_outputs: int = 2) -> None:
         super().__init__()
+        if num_outputs not in (2, 3):
+            raise ValueError(f"DINOv2 head outputs must be 2 or 3, got {num_outputs}")
         self.backbone = backbone
         embed_dim = _embed_dim(backbone)
         self.head = nn.Sequential(
@@ -237,7 +243,7 @@ class DinoV2OrdinalClassifier(nn.Module):
             nn.LayerNorm(256),
             nn.GELU(),
             nn.Dropout(dropout),
-            nn.Linear(256, 2),
+            nn.Linear(256, num_outputs),
         )
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
@@ -251,10 +257,11 @@ def build_dinov2_ordinal_model(
     backbone: nn.Module | None = None,
     dropout: float = 0.3,
     model_name: str = HUB_MODEL,
+    num_outputs: int = 2,
 ) -> DinoV2OrdinalClassifier:
     if backbone is None:
         backbone = load_dinov2_backbone(model_name)
-    return DinoV2OrdinalClassifier(backbone, dropout=dropout)
+    return DinoV2OrdinalClassifier(backbone, dropout=dropout, num_outputs=num_outputs)
 
 
 def configure_trainable_parameters(

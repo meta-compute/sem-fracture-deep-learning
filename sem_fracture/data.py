@@ -30,10 +30,17 @@ def load_split(data_dir, split_file):
         return list(reader)
 
 
-def compute_class_weights(records):
+def training_class_counts(records):
+    """Count Brittle, Ductile, Mixed rows in the training split only."""
     training_counts = Counter(
         row["label"] for row in records if row["split"] == "train"
     )
+    return [training_counts[label] for label in CLASSES]
+
+
+def compute_class_weights(records):
+    counts = training_class_counts(records)
+    training_counts = dict(zip(CLASSES, counts))
     sample_count = sum(training_counts.values())
     if not sample_count or any(training_counts[label] == 0 for label in CLASSES):
         raise ValueError("Training records must contain every class")

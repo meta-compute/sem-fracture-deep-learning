@@ -79,6 +79,25 @@ class ClassBalancedCrossEntropyLoss(nn.Module):
         return self._loss(logits, targets)
 
 
+class BinaryCrossEntropyLoss(nn.Module):
+    """BCE-with-logits on one-hot labels. Targets stay integer class indices."""
+
+    def __init__(self, num_classes: int = 3) -> None:
+        super().__init__()
+        if num_classes < 2:
+            raise ValueError("num_classes must be at least 2")
+        self.num_classes = num_classes
+        self.bce = nn.BCEWithLogitsLoss()
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        if logits.shape[-1] != self.num_classes:
+            raise ValueError(
+                f"Expected logits with {self.num_classes} classes, got {tuple(logits.shape)}"
+            )
+        one_hot = torch.nn.functional.one_hot(targets.long(), self.num_classes).to(logits.dtype)
+        return self.bce(logits, one_hot)
+
+
 class WeightedBinaryEvidenceLoss(nn.Module):
     """Class-weighted binary cross-entropy over [Brittle, Ductile] evidence logits."""
 
